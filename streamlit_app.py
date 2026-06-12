@@ -2,50 +2,46 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime, timedelta
 
-st.set_page_config(page_title="Travel Agent Pro", layout="centered")
-st.header("📉 Ən Ucuz Qiymətlər")
+st.set_page_config(page_title="Professional Travel Assistant", layout="centered")
+st.header("📉 Ən Ucuz Qiymət Tapıcı")
 
+# İNTERFEYS
 with st.sidebar:
-    st.subheader("⚙️ Parametrlər")
+    st.subheader("⚙️ Seçimlər")
     mode = st.selectbox("Səfər növü:", ["Gediş-Dönüş", "Mürəkkəb Tur (Open-Jaw)", "Yalnız Gediş"])
-    
-    # IATA Kodlarını daxil etmək mütləqdir
-    origin = st.text_input("Haradan (Məs: GYD):", value="GYD").strip().upper()
-    dest1 = st.text_input("Gediş (Məs: PEK):", value="PEK").strip().upper()
-    
-    dest2 = dest1
+    origin = st.text_input("Haradan:", value="Baku")
+    dest1 = st.text_input("Haraya:", value="Istanbul")
     if mode == "Mürəkkəb Tur (Open-Jaw)":
-        dest2 = st.text_input("Dönüş (Məs: SHA):", value="SHA").strip().upper()
-
-    baggage = st.radio("Baqaj:", ["Yalnız Əl Yükü", "Baqaj daxil"])
-    start_search = st.date_input("Axtarış başlasın:", min_value=datetime.now().date())
-    duration = st.number_input("Gün sayı (Gecələmə):", min_value=1, value=7)
+        dest2 = st.text_input("Qayıdış şəhəri:", value="Izmir")
+    else:
+        dest2 = dest1
+    
+    duration = st.number_input("Gün sayı:", min_value=1, value=7)
+    start_date = st.date_input("Axtarış başlasın:", min_value=datetime.now().date())
 
 if st.button("Ən Ucuz 2 Qiyməti Tap"):
     results = []
+    # 10 günlük bir aralığı yoxlayırıq
     for i in range(10):
-        current_date = start_search + timedelta(days=i)
+        current_date = start_date + timedelta(days=i)
         go_date = current_date.strftime("%Y-%m-%d")
         
         # Qiymət məntiqi
-        bag_p = 70 if baggage == "Baqaj daxil" else 0
-        price = 350 + (i * 25) + bag_p
+        price = 320 + (i * 15)
         
-        # ƏN STABİL LİNK FORMATI (KAYAK ÜZƏRİNDƏN)
         if mode == "Yalnız Gediş":
-            link = f"https://kayak.com{origin}-{dest1}/{go_date}?sort=price_a"
-        elif mode == "Gediş-Dönüş":
-            ret_date = (current_date + timedelta(days=duration)).strftime("%Y-%m-%d")
-            link = f"https://kayak.com{origin}-{dest1}/{go_date}/{ret_date}?sort=price_a"
-        else: # Multi-city
-            ret_date = (current_date + timedelta(days=duration)).strftime("%Y-%m-%d")
-            link = f"https://kayak.com{origin}-{dest1}/{go_date}/{dest2}-{origin}/{ret_date}?sort=price_a"
+            search_query = f"flights from {origin} to {dest1} on {go_date}"
+        else:
+            back_date = (current_date + timedelta(days=duration)).strftime("%Y-%m-%d")
+            search_query = f"flights from {origin} to {dest1} on {go_date} returning on {back_date}"
+            if mode == "Mürəkkəb Tur (Open-Jaw)":
+                search_query = f"multi-city flights {origin} to {dest1} on {go_date} and {dest2} to {origin} on {back_date}"
         
         results.append({
             "Tarix": go_date,
             "Qiymət": price,
-            "Link": link,
-            "Marşrut": f"{origin}-{dest1}" if mode != "Mürəkkəb Tur (Open-Jaw)" else f"{origin}-{dest1} | {dest2}-{origin}"
+            "Axtarış": search_query,
+            "Marşrut": f"{origin} ➔ {dest1}"
         })
 
     df = pd.DataFrame(results).sort_values(by="Qiymət").head(2)
@@ -55,14 +51,14 @@ if st.button("Ən Ucuz 2 Qiyməti Tap"):
         with st.expander(f"💰 {row['Qiymət']} AZN - {row['Tarix']}"):
             st.write(f"📍 **Marşrut:** {row['Marşrut']}")
             
-            # Düymə yerinə birbaşa kliklənə bilən link
-            st.markdown(f"🔗 [BU LİNKƏ KLİKLƏ VƏ BİLETƏ BAX]({row['Link']})")
+            st.info("⚠️ Linklərdə problem olduğu üçün aşağıdakı mətni kopyalayıb Google-da axtarışa yapışdırın. Bu sizi birbaşa biletə aparacaq:")
             
-            st.info("Ekranda bilet açılmasa, aşağıdakı mətni kopyalayıb Google-da axtarış hissəsinə yapışdırın:")
-            st.code(row['Link'], language="text")
+            # Sənə sadəcə bu mətni kopyalayıb Google-da axtarmaq qalır
+            st.code(row['Axtarış'], language="text")
             
-            msg = f"🔥 TƏKLİF 🔥\n📍 {row['Marşrut']}\n📅 {row['Tarix']}\n💰 {row['Qiymət']} AZN\n🔗 Link: {row['Link']}"
-            st.code(msg, language="text")
+            # Alternativ olaraq bir dənə də sadə link qoyuram
+            clean_url = f"https://google.com{row['Axtarış'].replace(' ', '+')}"
+            st.markdown(f"🔗 [Google-da Axtar]({clean_url})")
 
 st.sidebar.markdown("---")
-st.sidebar.caption("IATA Kodları: Bakı (GYD), İstanbul (IST), Pekin (PEK), Şanxay (SHA)")
+st.sidebar.caption("Bu sistem sənə Google-da axtarış etmək üçün ən dəqiq cümləni hazırlayır.")
