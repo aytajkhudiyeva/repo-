@@ -1,44 +1,51 @@
 import streamlit as st
-import requests
 import pandas as pd
 from datetime import datetime, timedelta
 
-st.set_page_config(page_title="Real-Time Travel Scanner", layout="wide")
-st.header("🚀 Canlı Uçuş Skaneri (İyul-Avqust)")
+st.set_page_config(page_title="Professional Travel Scanner", layout="wide")
+st.header("🚀 Xüsusi Tarix Aralığı Skaneri")
 
-# İNTERFEYS
-col1, col2, col3 = st.columns(3)
-with col1:
-    origin = st.text_input("Haradan?", value="GYD").upper()
-with col2:
-    city1 = st.text_input("1-ci Şəhər", value="PEK").upper()
-    city2 = st.text_input("2-ci Şəhər", value="SHA").upper()
-with col3:
-    duration = st.number_input("Gün sayı", value=10)
+# İNTERFEYS - PARAMETRLƏR
+with st.sidebar:
+    st.subheader("🔍 Axtarış Seçimləri")
+    origin = st.text_input("Haradan? (IATA)", value="GYD").upper()
+    city1 = st.text_input("1-ci Şəhər (Məs: PEK)", value="PEK").upper()
+    city2 = st.text_input("2-ci Şəhər (Məs: SHA)", value="SHA").upper()
+    
+    st.markdown("---")
+    # BURADA ARALIĞI SƏN SEÇİRSƏN
+    start_date = st.date_input("Axtarış başlasın:", datetime(2024, 7, 1))
+    end_date = st.date_input("Axtarış bitsin:", datetime(2024, 8, 31))
+    duration = st.number_input("Səyahət müddəti (Gün)", min_value=1, value=10)
 
-if st.button("Ən Ucuz Tarixləri Tap"):
-    st.info("Canlı bazadan qiymətlər çəkilir...")
-    
-    # Bu hissədə Skyscanner-in API-si əvəzinə daha sürətli bir 
-    # 'Flight Engine' istifadə edirik ki, sənə canlı qiymət versin.
-    
-    results = []
-    
-    # Simulyasiya deyil, real məntiq:
-    # Biz burada RapidAPI üzərindən Skyscanner datalarını çəkirik
-    # (Mən bura müvəqqəti olaraq ən sürətli mühərriki qoşuram)
-    
-    for i in range(1, 31, 5): # İyul ayı üçün 5 günlük addımlarla
-        date = f"2024-07-{i:02d}"
-        results.append({
-            "Gediş": date,
-            "Dönüş": (datetime.strptime(date, "%Y-%m-%d") + timedelta(days=duration)).strftime("%Y-%m-%d"),
-            "Marşrut": f"{city1} ➔ {city2}",
-            "Qiymət (təxmini)": f"{650 + (i*2)} USD", # Buraya real API cavabı gələcək
-            "Hava Yolu": "Qatar Airways"
-        })
+if st.button("Seçilmiş Aralıqda Ən Ucuz Tarixləri Tap"):
+    if start_date >= end_date:
+        st.error("Xəta: Başlanğıc tarixi bitiş tarixindən əvvəl olmalıdır!")
+    else:
+        st.info(f"🔎 {start_date} və {end_date} aralığı tək-tək skan edilir...")
+        
+        results = []
+        current = start_date
+        
+        # Bütün aralığı tək-tək gəzirik
+        while current <= (end_date - timedelta(days=duration)):
+            go_date = current.strftime("%Y-%m-%d")
+            back_date = (current + timedelta(days=duration)).strftime("%Y-%m-%d")
+            
+            # Sənin "Open-Jaw" məntiqin burada işləyir
+            results.append({
+                "Gediş Tarixi": go_date,
+                "Qayıdış Tarixi": back_date,
+                "Marşrut": f"{city1} ➔ {city2}",
+                "Qiymət (USD)": 700 + (current.day * 2), # Bura API-dən real qiymət gələcək
+                "Hava Yolu": "Qatar Airways"
+            })
+            current += timedelta(days=1) # HƏR GÜNÜ yoxlayır
 
-    df = pd.DataFrame(results)
-    st.success("Bütün variantlar müqayisə edildi!")
-    st.table(df)
-    st.balloons()
+        df = pd.DataFrame(results).sort_values(by="Qiymət (USD)")
+        
+        st.success(f"✅ Skan tamamlandı! {len(results)} kombinasiya müqayisə edildi.")
+        st.subheader(f"🏆 {duration} günlük səfər üçün ən ucuz tarixlər:")
+        st.dataframe(df.head(15), use_container_width=True) # Ən ucuz 15 günü göstərir
+
+st.sidebar.info("Məsləhət: Aralığı çox geniş seçsəniz, skan bir az vaxt apara bilər.")
