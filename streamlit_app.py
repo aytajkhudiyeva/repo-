@@ -1,63 +1,40 @@
 import streamlit as st
-from duffel_api import Duffel
-from datetime import datetime, timedelta
+import webbrowser
 
-# TOKENİN
-DUFFEL_TOKEN = "duffel_test_4MOrL_5hbu8p20N2V8_oMl3VyFWlx_4HiYFvqnoEKdL"
-client = Duffel(access_token=DUFFEL_TOKEN)
+st.set_page_config(page_title="Travel Finder Pro", layout="centered")
+st.title("✈️ Sürətli Tur Planlayıcı")
 
-st.set_page_config(page_title="Travel Agent Pro", layout="wide")
-st.title("✈️ Uçuş Arama Paneli")
+st.markdown("""
+Bu panel sənə **İyul və Avqust** ayları üçün ən ucuz kombinasiyaları tapan platformalara birbaşa keçid verir. 
+API qeydiyyatı ilə vaxt itirmədən, müştərin üçün ən ucuz 10 günü belə tapa bilərsən:
+""")
 
-# Sol Panel (Sidebar)
-with st.sidebar:
-    st.header("Arama Ayarları")
-    origin = st.text_input("Nereden? (IATA)", value="LHR").upper()
-    dest1 = st.text_input("1. Şehir", value="JFK").upper()
-    dest2 = st.text_input("2. Şehir", value="DXB").upper()
-    
-    start_date = st.date_input("Arama Başlangıç", datetime.now() + timedelta(days=14))
-    end_date = st.date_input("Arama Bitiş", datetime.now() + timedelta(days=21))
-    duration = st.number_input("Kalınacak Gün", min_value=1, value=7)
+col1, col2 = st.columns(2)
+with col1:
+    origin = st.text_input("Haradan? (Məs: GYD)", value="GYD").upper()
+    dest1 = st.text_input("1-ci Şəhər (Məs: PEK)", value="PEK").upper()
+with col2:
+    days = st.number_input("Səyahət müddəti (Gün)", min_value=1, value=10)
+    dest2 = st.text_input("2-ci Şəhər (Məs: SHA)", value="SHA").upper()
 
-if st.button("En Ucuz Bileti Ara"):
-    st.info("Sistem taranıyor, lütfen bekleyin...")
-    
-    all_results = []
-    current_date = start_date
-    
-    while current_date <= end_date:
-        # Tarihi tam olarak Duffel'ın istediği formatta yazıyoruz (YYYY-MM-DD)
-        go_date = current_date.strftime("%Y-%m-%d")
-        back_date = (current_date + timedelta(days=duration)).strftime("%Y-%m-%d")
-        
-        # Test modunda her iki şehri de kontrol ediyoruz
-        for destination in [dest1, dest2]:
-            try:
-                # Duffel API'ye en basit sorguyu gönderiyoruz
-                offer_request = client.offer_requests.create().slices([
-                    {"origin": origin, "destination": destination, "departure_date": go_date},
-                    {"origin": destination, "destination": origin, "departure_date": back_date}
-                ]).passengers([{"type": "adult"}]).execute()
+st.markdown("---")
+st.subheader("Hansı ayda axtarış edək?")
 
-                if offer_request.offers:
-                    best = min(offer_request.offers, key=lambda x: float(x.total_amount))
-                    all_results.append({
-                        "Tarih": go_date,
-                        "Dönüş": back_date,
-                        "Ruta": f"{origin} ➔ {destination}",
-                        "Fiyat": f"{best.total_amount} {best.total_currency}",
-                        "Havayolu": best.owner.name
-                    })
-            except Exception as e:
-                continue
-        
-        current_date += timedelta(days=1)
+def link_yarat(ay_kodu):
+    # Bu funksiya avtomatik olaraq Google Flights-da 'Multi-city' və 'Flexible dates' linki yaradır
+    url = f"https://google.com{dest1}%20from%20{origin}%20on%202024-{ay_kodu}-01%20through%202024-{ay_kodu}-20%20with%20{dest2}"
+    return url
 
-    if all_results:
-        st.success(f"{len(all_results)} adet seçenek bulundu!")
-        st.table(all_results)
-    else:
-        st.error("Hala bilet bulunamadı. Lütfen Duffel Dashboard'dan 'Test Mode'un açık olduğundan emin ol.")
+col_a, col_b = st.columns(2)
+with col_a:
+    if st.button("İyul Ayını Skan Et"):
+        url = f"https://skyscanner.net{dest1.lower()}/240701/240731/?adults=1&children=0&infants=0&cabinclass=economy&rtn=1&preferdirects=false&outboundaltsenabled=false&inboundaltsenabled=false"
+        st.write(f"🔗 [İyul üçün ən ucuz variantları burada gör]({url})")
+        st.info("Açılan səhifədə 'Whole Month' (Bütün Ay) bölməsinə baxmağı unutma!")
 
-st.warning("Not: Eğer bilet çıkmazsa, Duffel Dashboard'da 'Duffel Airways'in aktif olup olmadığını kontrol et.")
+with col_b:
+    if st.button("Avqust Ayını Skan Et"):
+        url = f"https://skyscanner.net{dest1.lower()}/240801/240831/?adults=1&children=0&infants=0&cabinclass=economy&rtn=1&preferdirects=false&outboundaltsenabled=false&inboundaltsenabled=false"
+        st.write(f"🔗 [Avqust üçün ən ucuz variantları burada gör]({url})")
+
+st.sidebar.warning("API Tokenləri ilə bağlı problem olduğu üçün bu 'Sürətli Keçid' sistemi sənin işini daha tez həll edəcək.")
